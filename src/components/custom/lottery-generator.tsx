@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart, Info, Star, Circle, Crown, CreditCard, Smartphone, Building2, X, Lock, Sparkles } from 'lucide-react';
+import { Heart, Info, Star, Circle, Crown, CreditCard, Smartphone, Building2, X, Sparkles } from 'lucide-react';
 import { 
   LOTTERY_CONFIGS, 
   generateRandomNumbers, 
@@ -10,8 +10,6 @@ import {
   saveGameToLocalStorage,
   loadGamesFromLocalStorage,
   removeGameFromLocalStorage,
-  getGenerationLimit,
-  incrementGenerationCount,
   checkSubscription,
   activateSubscription
 } from '@/lib/lottery-utils';
@@ -22,22 +20,14 @@ export default function LotteryGenerator() {
   const [currentGame, setCurrentGame] = useState<GeneratedGame | null>(null);
   const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
   const [showTips, setShowTips] = useState(false);
-  const [generationCount, setGenerationCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('pix');
-  const [showLimitModal, setShowLimitModal] = useState(false);
-  const [showResultsModal, setShowResultsModal] = useState(false);
-  const [lotteryResults, setLotteryResults] = useState<any>(null);
-  const [loadingResults, setLoadingResults] = useState(false);
 
   // Carrega jogos salvos e verifica assinatura ao montar o componente
   useEffect(() => {
     const games = loadGamesFromLocalStorage();
     setSavedGames(games);
-    
-    const count = getGenerationLimit();
-    setGenerationCount(count);
     
     const subscribed = checkSubscription();
     setIsSubscribed(subscribed);
@@ -45,12 +35,6 @@ export default function LotteryGenerator() {
 
   // Gera um novo jogo
   const handleGenerateGame = () => {
-    // Verifica se tem assinatura ou gerações disponíveis
-    if (!isSubscribed && generationCount >= 3) {
-      setShowLimitModal(true);
-      return;
-    }
-
     const config = LOTTERY_CONFIGS[selectedLottery];
     const numbers = generateRandomNumbers(
       config.minNumber,
@@ -67,12 +51,6 @@ export default function LotteryGenerator() {
     };
     
     setCurrentGame(game);
-    
-    // Incrementa contador apenas se não for assinante
-    if (!isSubscribed) {
-      incrementGenerationCount();
-      setGenerationCount(generationCount + 1);
-    }
   };
 
   // Salva jogo como favorito
@@ -98,66 +76,10 @@ export default function LotteryGenerator() {
     activateSubscription();
     setIsSubscribed(true);
     setShowSubscriptionModal(false);
-    setShowLimitModal(false);
     alert('🎉 Assinatura ativada com sucesso! Agora você tem gerações ilimitadas por 30 dias!');
   };
 
-  // Busca resultados oficiais da Caixa
-  const handleFetchResults = async () => {
-    setLoadingResults(true);
-    setShowResultsModal(true);
-    
-    try {
-      // Simula busca de resultados (em produção, usar API real da Caixa)
-      // API exemplo: https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/
-      
-      // Simulação de dados para demonstração
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const mockResults = {
-        'mega-sena': {
-          concurso: '2650',
-          data: new Date().toLocaleDateString('pt-BR'),
-          numeros: [5, 12, 23, 34, 45, 58],
-          premios: {
-            sena: 'R$ 35.000.000,00',
-            quina: 'R$ 45.000,00',
-            quadra: 'R$ 850,00'
-          }
-        },
-        'quina': {
-          concurso: '6320',
-          data: new Date().toLocaleDateString('pt-BR'),
-          numeros: [8, 15, 27, 42, 68],
-          premios: {
-            quina: 'R$ 8.500.000,00',
-            quadra: 'R$ 5.200,00',
-            terno: 'R$ 95,00'
-          }
-        },
-        'lotofacil': {
-          concurso: '2950',
-          data: new Date().toLocaleDateString('pt-BR'),
-          numeros: [2, 4, 5, 7, 9, 11, 13, 15, 17, 18, 20, 21, 23, 24, 25],
-          premios: {
-            '15 acertos': 'R$ 1.500.000,00',
-            '14 acertos': 'R$ 1.200,00',
-            '13 acertos': 'R$ 25,00'
-          }
-        }
-      };
-      
-      setLotteryResults(mockResults);
-    } catch (error) {
-      console.error('Erro ao buscar resultados:', error);
-      alert('Não foi possível buscar os resultados. Tente novamente mais tarde.');
-    } finally {
-      setLoadingResults(false);
-    }
-  };
-
   const config = LOTTERY_CONFIGS[selectedLottery];
-  const remainingGenerations = isSubscribed ? '∞' : Math.max(0, 3 - generationCount);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 sm:p-6 md:p-8">
@@ -175,22 +97,16 @@ export default function LotteryGenerator() {
             Gere seus jogos e descubra suas chances de ganhar!
           </p>
           
-          {/* Status de Gerações */}
+          {/* Status de Assinatura */}
           <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
-            <div className={`px-6 py-3 rounded-full font-bold text-sm sm:text-base ${
-              isSubscribed 
-                ? 'bg-gradient-to-r from-yellow-500 to-orange-600' 
-                : 'bg-white/10 backdrop-blur-sm'
-            }`}>
-              {isSubscribed ? (
+            {isSubscribed && (
+              <div className="px-6 py-3 rounded-full font-bold text-sm sm:text-base bg-gradient-to-r from-yellow-500 to-orange-600">
                 <span className="flex items-center gap-2">
                   <Crown className="w-5 h-5" />
                   ASSINANTE PREMIUM
                 </span>
-              ) : (
-                <span>Gerações restantes: {remainingGenerations}/3</span>
-              )}
-            </div>
+              </div>
+            )}
             
             {!isSubscribed && (
               <button
@@ -239,35 +155,14 @@ export default function LotteryGenerator() {
             <p className="text-gray-300">{config.description}</p>
           </div>
 
-          {/* Botões Gerar e Conferir Resultados */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <button
-              onClick={handleGenerateGame}
-              className={`flex-1 ${config.gradient} text-white font-bold py-4 sm:py-6 px-8 rounded-2xl text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center justify-center gap-3 ${
-                !isSubscribed && generationCount >= 3 ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {!isSubscribed && generationCount >= 3 ? (
-                <>
-                  <Lock className="w-6 h-6" />
-                  Limite Atingido - Assine Premium
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-6 h-6" />
-                  Gerador Premium
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handleFetchResults}
-              className="flex-1 sm:flex-initial bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold py-4 sm:py-6 px-8 rounded-2xl text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center justify-center gap-3"
-            >
-              <Info className="w-6 h-6" />
-              Conferir Resultados do Dia
-            </button>
-          </div>
+          {/* Botão Gerar */}
+          <button
+            onClick={handleGenerateGame}
+            className={`w-full ${config.gradient} text-white font-bold py-4 sm:py-6 px-8 rounded-2xl text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center justify-center gap-3 mb-6`}
+          >
+            <Sparkles className="w-6 h-6" />
+            Gerar Jogo
+          </button>
 
           {/* Números Gerados */}
           {currentGame && (
@@ -394,43 +289,6 @@ export default function LotteryGenerator() {
         </footer>
       </div>
 
-      {/* Modal de Limite Atingido */}
-      {showLimitModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-white/20 shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Limite de Gerações Atingido</h3>
-              <p className="text-gray-300">
-                Você já usou suas 3 gerações gratuitas de hoje. Assine o plano Premium para gerações ilimitadas!
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <button
-                onClick={() => {
-                  setShowLimitModal(false);
-                  setShowSubscriptionModal(true);
-                }}
-                className="w-full bg-gradient-to-r from-pink-500 to-rose-600 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3"
-              >
-                <Crown className="w-5 h-5" />
-                Ver Planos Premium
-              </button>
-              
-              <button
-                onClick={() => setShowLimitModal(false)}
-                className="w-full bg-white/10 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 hover:bg-white/20"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal de Assinatura */}
       {showSubscriptionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -543,147 +401,6 @@ export default function LotteryGenerator() {
             <p className="text-center text-sm text-gray-400 mt-4">
               Cancele quando quiser. Sem taxas adicionais.
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Resultados */}
-      {showResultsModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 sm:p-8 max-w-4xl w-full border border-white/20 shadow-2xl my-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
-                <Info className="w-8 h-8 text-blue-400" />
-                Resultados do Dia
-              </h3>
-              <button
-                onClick={() => setShowResultsModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {loadingResults ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-400 mx-auto mb-4"></div>
-                <p className="text-gray-300">Buscando resultados oficiais da Caixa...</p>
-              </div>
-            ) : lotteryResults ? (
-              <div className="space-y-6">
-                {/* Mega-Sena */}
-                {lotteryResults['mega-sena'] && (
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-xl font-bold text-green-400">Mega-Sena</h4>
-                      <span className="text-sm text-gray-400">
-                        Concurso {lotteryResults['mega-sena'].concurso} - {lotteryResults['mega-sena'].data}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-6 gap-3 mb-4">
-                      {lotteryResults['mega-sena'].numeros.map((num: number, idx: number) => (
-                        <div
-                          key={idx}
-                          className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-center font-bold text-xl"
-                        >
-                          {num.toString().padStart(2, '0')}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Sena</p>
-                        <p className="font-bold">{lotteryResults['mega-sena'].premios.sena}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Quina</p>
-                        <p className="font-bold">{lotteryResults['mega-sena'].premios.quina}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Quadra</p>
-                        <p className="font-bold">{lotteryResults['mega-sena'].premios.quadra}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Quina */}
-                {lotteryResults['quina'] && (
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-xl font-bold text-purple-400">Quina</h4>
-                      <span className="text-sm text-gray-400">
-                        Concurso {lotteryResults['quina'].concurso} - {lotteryResults['quina'].data}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-3 mb-4">
-                      {lotteryResults['quina'].numeros.map((num: number, idx: number) => (
-                        <div
-                          key={idx}
-                          className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 text-center font-bold text-xl"
-                        >
-                          {num.toString().padStart(2, '0')}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Quina</p>
-                        <p className="font-bold">{lotteryResults['quina'].premios.quina}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Quadra</p>
-                        <p className="font-bold">{lotteryResults['quina'].premios.quadra}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">Terno</p>
-                        <p className="font-bold">{lotteryResults['quina'].premios.terno}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Lotofácil */}
-                {lotteryResults['lotofacil'] && (
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/10">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-xl font-bold text-blue-400">Lotofácil</h4>
-                      <span className="text-sm text-gray-400">
-                        Concurso {lotteryResults['lotofacil'].concurso} - {lotteryResults['lotofacil'].data}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 mb-4">
-                      {lotteryResults['lotofacil'].numeros.map((num: number, idx: number) => (
-                        <div
-                          key={idx}
-                          className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg p-3 text-center font-bold text-lg"
-                        >
-                          {num.toString().padStart(2, '0')}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">15 acertos</p>
-                        <p className="font-bold">{lotteryResults['lotofacil'].premios['15 acertos']}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">14 acertos</p>
-                        <p className="font-bold">{lotteryResults['lotofacil'].premios['14 acertos']}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-gray-400">13 acertos</p>
-                        <p className="font-bold">{lotteryResults['lotofacil'].premios['13 acertos']}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-center text-sm text-gray-400 mt-6">
-                  * Resultados simulados para demonstração. Em produção, conectar à API oficial da Caixa.
-                </p>
-              </div>
-            ) : null}
           </div>
         </div>
       )}
